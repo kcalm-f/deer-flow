@@ -596,6 +596,26 @@ loop_detection:
   #     hard_limit: 300
 
 # ============================================================================
+# Agent Middleware Extension Points
+# ============================================================================
+# Dynamically load external AgentMiddleware instances by agent_name. DeerFlow
+# only assembles middleware; domain-specific policies live in the configured
+# external module. The NL2SQL Evidence Gate is registered for the custom
+# nl2sql-deepresearch agent and defaults to off.
+
+agent_middlewares:
+  enabled: true
+  agents:
+    nl2sql-deepresearch:
+      - name: nl2sql_evidence_gate
+        enabled: true
+        use: beijing_deepresearch.deerflow_ext.nl2sql_evidence_gate:Nl2sqlEvidenceGateMiddleware
+        config:
+          enabled: true
+          mode: "off" # off | warn | enforce
+          max_retries: 2
+
+# ============================================================================
 # Provider Safety Termination Configuration
 # ============================================================================
 # Intercept AIMessages where the provider stopped generation for safety reasons

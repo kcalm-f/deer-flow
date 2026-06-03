@@ -320,13 +320,14 @@ echo ""
 cleanup() {
     local status="${1:-0}"
     trap - INT TERM
+    set +e
     echo ""
     stop_all
     exit "$status"
 }
 
-trap 'cleanup 130' INT
-trap 'cleanup 143' TERM
+trap 'cleanup 0' INT
+trap 'cleanup 0' TERM
 
 # ── Helper: start a service ──────────────────────────────────────────────────
 
@@ -364,7 +365,7 @@ mkdir -p temp/client_body_temp temp/proxy_temp temp/fastcgi_temp temp/uwsgi_temp
 
 # 1. Gateway API
 run_service "Gateway" \
-    "cd backend && PYTHONPATH=. uv run uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1" \
+    "cd backend && PYTHONPATH=../..:. uv run uvicorn app.gateway.app:app --host 0.0.0.0 --port 8001 $GATEWAY_EXTRA_FLAGS > ../logs/gateway.log 2>&1" \
     8001 30
 
 # 2. Frontend
@@ -399,5 +400,19 @@ if $DAEMON_MODE; then
     trap - INT TERM
 else
     echo "  Press Ctrl+C to stop all services"
+    set +e
     wait
+    WAIT_STATUS=$?
+    set -e
+
+    case "$WAIT_STATUS" in
+        0)
+            ;;
+        130|143)
+            cleanup 0
+            ;;
+        *)
+            cleanup "$WAIT_STATUS"
+            ;;
+    esac
 fi

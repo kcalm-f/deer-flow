@@ -26,6 +26,7 @@ from langchain_core.runnables import RunnableConfig
 
 from deerflow.agents.lead_agent.prompt import apply_prompt_template
 from deerflow.agents.memory.summarization_hook import memory_flush_hook
+from deerflow.agents.middlewares.agent_middlewares_loader import load_agent_middlewares
 from deerflow.agents.middlewares.clarification_middleware import ClarificationMiddleware
 from deerflow.agents.middlewares.loop_detection_middleware import LoopDetectionMiddleware
 from deerflow.agents.middlewares.memory_middleware import MemoryMiddleware
@@ -338,6 +339,10 @@ def _build_middlewares(
     # Inject custom middlewares before ClarificationMiddleware
     if custom_middlewares:
         middlewares.extend(custom_middlewares)
+
+    # 配置化 middleware 扩展口。这里按 agent_name 加载外部 middleware；
+    # DeerFlow 核心只负责装配，不写入任何 NL2SQL 业务判断。
+    middlewares.extend(load_agent_middlewares(agent_name, app_config=resolved_app_config))
 
     # SafetyFinishReasonMiddleware — suppress tool execution when the provider
     # safety-terminated the response. Registered after custom middlewares so

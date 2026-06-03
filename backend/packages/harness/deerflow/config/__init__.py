@@ -1,3 +1,4 @@
+from .agent_middlewares_config import AgentMiddlewareEntry, AgentMiddlewaresConfig
 from .app_config import get_app_config
 from .extensions_config import ExtensionsConfig, get_extensions_config
 from .loop_detection_config import LoopDetectionConfig
@@ -15,6 +16,8 @@ from .tracing_config import (
 
 __all__ = [
     "get_app_config",
+    "AgentMiddlewareEntry",
+    "AgentMiddlewaresConfig",
     "SkillEvolutionConfig",
     "Paths",
     "get_paths",

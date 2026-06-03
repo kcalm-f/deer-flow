@@ -3,7 +3,8 @@ from types import SimpleNamespace
 
 from deerflow.agents.lead_agent.prompt import get_skills_prompt_section
 from deerflow.config.agents_config import AgentConfig
-from deerflow.skills.types import Skill
+from deerflow.skills.parser import parse_skill_file
+from deerflow.skills.types import Skill, SkillCategory
 
 
 class NamedTool:
@@ -31,6 +32,15 @@ def test_get_skills_prompt_section_returns_empty_when_no_skills_match(monkeypatc
 
     result = get_skills_prompt_section(available_skills={"non_existent_skill"})
     assert result == ""
+
+
+def test_nl2sql_evidence_skill_allows_read_file_for_progressive_loading():
+    skill_file = Path(__file__).resolve().parents[2] / "skills/custom/nl2sql-evidence/SKILL.md"
+    skill = parse_skill_file(skill_file, SkillCategory.CUSTOM, Path("nl2sql-evidence"))
+
+    assert skill is not None
+    assert skill.allowed_tools is not None
+    assert "read_file" in skill.allowed_tools
 
 
 def test_get_skills_prompt_section_returns_empty_when_available_skills_empty(monkeypatch):
