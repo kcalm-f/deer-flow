@@ -143,9 +143,9 @@ def test_agent_middlewares_reject_non_middleware(monkeypatch):
     assert load_agent_middlewares("nl2sql-deepresearch", app_config=app_config) == []
 
 
-def test_nl2sql_evidence_gate_mode_off_is_quoted_in_config_yaml():
+def test_nl2sql_evidence_gate_mode_is_enforce_in_local_config_yaml():
     config_path = Path(__file__).resolve().parents[2] / "config.yaml"
     config_data = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     gate_config = config_data["agent_middlewares"]["agents"]["nl2sql-deepresearch"][0]["config"]
 
-    assert gate_config["mode"] == "off"
+    assert gate_config["mode"] == "enforce"
