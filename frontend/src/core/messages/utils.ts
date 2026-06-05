@@ -79,11 +79,6 @@ export function getMessageGroups(messages: Message[]): MessageGroup[] {
         const open = lastOpenGroup();
         if (open) {
           open.messages.push(message);
-        } else {
-          console.error(
-            "Unexpected tool message outside a processing group",
-            message,
-          );
         }
       }
       continue;

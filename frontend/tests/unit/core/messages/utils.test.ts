@@ -1,5 +1,5 @@
 import type { Message } from "@langchain/langgraph-sdk";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import {
   extractContentFromMessage,
@@ -205,6 +205,36 @@ test("hides internal todo reminder messages from message groups", () => {
   expect(
     groups.flatMap((group) => group.messages).map((message) => message.id),
   ).toEqual(["human-1", "ai-1"]);
+});
+
+test("ignores orphaned tool messages at paginated history boundaries", () => {
+  const errorSpy = vi
+    .spyOn(console, "error")
+    .mockImplementation(() => undefined);
+  const messages = [
+    {
+      id: "tool-1-result",
+      type: "tool",
+      name: "web_search",
+      tool_call_id: "tool-1",
+      content: "[]",
+    },
+    {
+      id: "ai-1",
+      type: "ai",
+      content: "Recovered answer",
+    },
+  ] as Message[];
+
+  try {
+    const groups = getMessageGroups(messages);
+
+    expect(errorSpy).not.toHaveBeenCalled();
+    expect(groups.map((group) => group.type)).toEqual(["assistant"]);
+    expect(groups.flatMap((group) => group.messages)).toEqual([messages[1]]);
+  } finally {
+    errorSpy.mockRestore();
+  }
 });
 
 test("hides assistant copy data while that turn is streaming", () => {
