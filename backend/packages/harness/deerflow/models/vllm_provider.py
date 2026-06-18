@@ -35,6 +35,8 @@ from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResu
 from langchain_openai import ChatOpenAI
 from langchain_openai.chat_models.base import _create_usage_metadata
 
+from deerflow.models.tool_call_sanitizer import repair_invalid_tool_calls, sanitize_openai_messages
+
 
 def _normalize_vllm_chat_template_kwargs(payload: dict[str, Any]) -> None:
     """Map DeerFlow's legacy ``thinking`` toggle to vLLM/Qwen's ``enable_thinking``.
@@ -188,6 +190,9 @@ class VllmChatModel(ChatOpenAI):
             for payload_msg, ai_msg in zip(assistant_payloads, ai_messages):
                 _restore_reasoning_field(payload_msg, ai_msg)
 
+        if isinstance(payload.get("messages"), list):
+            payload["messages"] = sanitize_openai_messages(payload["messages"])
+
         return payload
 
     def _create_chat_result(self, response: dict | openai.BaseModel, generation_info: dict | None = None) -> ChatResult:
@@ -208,6 +213,10 @@ class VllmChatModel(ChatOpenAI):
             reasoning_text = _reasoning_to_text(reasoning)
             if reasoning_text:
                 message.additional_kwargs["reasoning_content"] = reasoning_text
+
+        for generation in result.generations:
+            if isinstance(generation, ChatGeneration):
+                generation.message = repair_invalid_tool_calls(generation.message)
 
         return result
 

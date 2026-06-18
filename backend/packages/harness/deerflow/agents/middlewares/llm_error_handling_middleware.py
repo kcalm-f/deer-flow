@@ -21,6 +21,7 @@ from langchain_core.messages import AIMessage
 from langgraph.errors import GraphBubbleUp
 
 from deerflow.config.app_config import AppConfig
+from deerflow.models.tool_call_sanitizer import sanitize_model_request
 
 logger = logging.getLogger(__name__)
 
@@ -246,8 +247,10 @@ class LLMErrorHandlingMiddleware(AgentMiddleware[AgentState]):
             )
 
         attempt = 1
+        sanitized_retry_used = False
         while True:
             try:
+                sanitize_model_request(request)
                 response = handler(request)
                 self._record_success()
                 return response
@@ -258,6 +261,14 @@ class LLMErrorHandlingMiddleware(AgentMiddleware[AgentState]):
                         self._circuit_probe_in_flight = False
                 raise
             except Exception as exc:
+                if _is_function_arguments_json_error(exc) and not sanitized_retry_used:
+                    sanitized_retry_used = True
+                    sanitize_model_request(request)
+                    logger.warning(
+                        "Retrying LLM call once after sanitizing malformed tool-call history: %s",
+                        _extract_error_detail(exc),
+                    )
+                    continue
                 retriable, reason = self._classify_error(exc)
                 if retriable and attempt < self.retry_max_attempts:
                     wait_ms = self._build_retry_delay_ms(attempt, exc)
@@ -297,8 +308,10 @@ class LLMErrorHandlingMiddleware(AgentMiddleware[AgentState]):
             )
 
         attempt = 1
+        sanitized_retry_used = False
         while True:
             try:
+                sanitize_model_request(request)
                 response = await handler(request)
                 self._record_success()
                 return response
@@ -309,6 +322,14 @@ class LLMErrorHandlingMiddleware(AgentMiddleware[AgentState]):
                         self._circuit_probe_in_flight = False
                 raise
             except Exception as exc:
+                if _is_function_arguments_json_error(exc) and not sanitized_retry_used:
+                    sanitized_retry_used = True
+                    sanitize_model_request(request)
+                    logger.warning(
+                        "Retrying async LLM call once after sanitizing malformed tool-call history: %s",
+                        _extract_error_detail(exc),
+                    )
+                    continue
                 retriable, reason = self._classify_error(exc)
                 if retriable and attempt < self.retry_max_attempts:
                     wait_ms = self._build_retry_delay_ms(attempt, exc)
@@ -336,6 +357,11 @@ class LLMErrorHandlingMiddleware(AgentMiddleware[AgentState]):
 
 def _matches_any(detail: str, patterns: tuple[str, ...]) -> bool:
     return any(pattern in detail for pattern in patterns)
+
+
+def _is_function_arguments_json_error(exc: BaseException) -> bool:
+    detail = _extract_error_detail(exc).lower()
+    return "function.arguments" in detail and "json" in detail
 
 
 def _extract_error_code(exc: BaseException) -> Any:

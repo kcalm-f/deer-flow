@@ -23,6 +23,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, System
 from langchain_core.outputs import ChatGeneration, ChatResult
 
 from deerflow.models.credential_loader import CodexCliCredential, load_codex_cli_credential
+from deerflow.models.tool_call_sanitizer import normalize_function_arguments
 
 logger = logging.getLogger(__name__)
 
@@ -316,7 +317,9 @@ class CodexChatModel(BaseChatModel):
         if isinstance(raw_arguments, dict):
             return raw_arguments, None
 
-        normalized_arguments = raw_arguments or "{}"
+        normalized_arguments = normalize_function_arguments(raw_arguments or "{}")
+        if normalized_arguments is None:
+            normalized_arguments = raw_arguments or "{}"
         try:
             parsed_arguments = json.loads(normalized_arguments)
         except (TypeError, json.JSONDecodeError) as exc:

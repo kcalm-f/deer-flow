@@ -25,9 +25,11 @@ from typing import Any
 
 from langchain_core.language_models import LanguageModelInput
 from langchain_core.messages import AIMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_openai import ChatOpenAI
 
 from deerflow.models.assistant_payload_replay import restore_assistant_payloads
+from deerflow.models.tool_call_sanitizer import repair_invalid_tool_calls, sanitize_openai_messages
 
 
 class PatchedChatOpenAI(ChatOpenAI):
@@ -78,8 +80,18 @@ class PatchedChatOpenAI(ChatOpenAI):
         payload = super()._get_request_payload(input_, stop=stop, **kwargs)
 
         restore_assistant_payloads(payload.get("messages", []), original_messages, _restore_tool_call_signatures)
+        if isinstance(payload.get("messages"), list):
+            payload["messages"] = sanitize_openai_messages(payload["messages"])
 
         return payload
+
+    def _create_chat_result(self, response: dict, generation_info: dict | None = None) -> ChatResult:
+        """Repair narrowly malformed tool-call arguments from provider responses."""
+        result = super()._create_chat_result(response, generation_info=generation_info)
+        for generation in result.generations:
+            if isinstance(generation, ChatGeneration):
+                generation.message = repair_invalid_tool_calls(generation.message)
+        return result
 
 
 def _restore_tool_call_signatures(payload_msg: dict, orig_msg: AIMessage) -> None:

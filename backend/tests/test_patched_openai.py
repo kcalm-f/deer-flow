@@ -8,9 +8,12 @@ fallback, camelCase keys, and several edge-cases.
 
 from __future__ import annotations
 
-from langchain_core.messages import AIMessage
+from unittest.mock import patch
 
-from deerflow.models.patched_openai import _restore_tool_call_signatures
+from langchain_core.messages import AIMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
+
+from deerflow.models.patched_openai import PatchedChatOpenAI, _restore_tool_call_signatures
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -172,5 +175,32 @@ def test_tool_call_multiple_sequential_signatures():
     assert payload_tc_b["thought_signature"] == "SIG_STEP2=="
 
 
-# Integration behavior for PatchedChatOpenAI is validated indirectly via
-# _restore_tool_call_signatures unit coverage above.
+def test_patched_chat_openai_repairs_invalid_tool_call_arguments_from_chat_result():
+    model = PatchedChatOpenAI(model="gpt-4o", api_key="test-key")
+    invalid_message = AIMessage(
+        content="",
+        invalid_tool_calls=[
+            {
+                "type": "invalid_tool_call",
+                "id": "call_record",
+                "name": "record_reasoning",
+                "args": '{"phase":"discovery","content":{"decision":"ok"}]}',
+                "error": None,
+            }
+        ],
+    )
+    base_result = ChatResult(generations=[ChatGeneration(message=invalid_message)])
+
+    with patch.object(type(model).__bases__[0], "_create_chat_result", return_value=base_result):
+        result = model._create_chat_result({})
+
+    message = result.generations[0].message
+    assert message.invalid_tool_calls == []
+    assert message.tool_calls == [
+        {
+            "name": "record_reasoning",
+            "args": {"phase": "discovery", "content": {"decision": "ok"}},
+            "id": "call_record",
+            "type": "tool_call",
+        }
+    ]

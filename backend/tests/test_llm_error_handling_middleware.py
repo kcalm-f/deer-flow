@@ -378,6 +378,40 @@ def test_sync_read_error_triggers_retry_loop(monkeypatch: pytest.MonkeyPatch) ->
     assert len(waits) == 2  # slept between attempts 1→2 and 2→3
 
 
+def test_sync_function_arguments_json_error_retries_once_with_sanitized_history() -> None:
+    middleware = _build_middleware(retry_max_attempts=3)
+    request = SimpleNamespace(
+        messages=[
+            AIMessage(
+                content="",
+                invalid_tool_calls=[
+                    {
+                        "type": "invalid_tool_call",
+                        "id": "bad",
+                        "name": "record_reasoning",
+                        "args": '{"phase": ',
+                        "error": "parse failed",
+                    }
+                ],
+            )
+        ]
+    )
+    attempts = 0
+
+    def handler(req) -> AIMessage:
+        nonlocal attempts
+        attempts += 1
+        assert req.messages[0].invalid_tool_calls == []
+        if attempts == 1:
+            raise FakeError('The "function.arguments" parameter of the code model must be in JSON format.', status_code=400)
+        return AIMessage(content="ok")
+
+    result = middleware.wrap_model_call(request, handler)
+
+    assert result.content == "ok"
+    assert attempts == 2
+
+
 @pytest.mark.anyio
 async def test_async_read_error_triggers_retry_loop(monkeypatch: pytest.MonkeyPatch) -> None:
     middleware = _build_middleware(retry_max_attempts=3, retry_base_delay_ms=10, retry_cap_delay_ms=10)
