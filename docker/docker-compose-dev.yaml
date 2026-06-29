@@ -2,7 +2,7 @@
 # Usage: docker-compose -f docker-compose-dev.yaml up --build
 #
 # Services:
-#   - nginx: Reverse proxy (port 2026)
+#   - nginx: Reverse proxy (port 2036)
 #   - frontend: Frontend Next.js dev server (port 3000)
 #   - gateway: Backend Gateway API + agent runtime (port 8001)
 #   - provisioner (optional): Sandbox provisioner (creates Pods in host Kubernetes)
@@ -10,7 +10,7 @@
 # Prerequisites:
 #   - Kubernetes cluster + kubeconfig are only required when using provisioner mode.
 #
-# Access: http://localhost:2026
+# Access: http://localhost:2036
 
 services:
   # ── Sandbox Provisioner ────────────────────────────────────────────────
@@ -65,7 +65,7 @@ services:
     image: nginx:alpine
     container_name: deer-flow-nginx
     ports:
-      - "2026:2026"
+      - "2036:2026"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf.template:ro
     command:

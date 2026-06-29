@@ -29,6 +29,29 @@ set -e
 REPO_ROOT="$(builtin cd "$(dirname "${BASH_SOURCE[0]}")/.." >/dev/null 2>&1 && pwd -P)"
 cd "$REPO_ROOT"
 
+# ── Check prerequisites ──────────────────────────────────────────────────────
+
+# Check and install pnpm if not found
+if ! command -v pnpm &>/dev/null; then
+    echo "[serve.sh] pnpm not found, attempting to install..."
+    if command -v npm &>/dev/null; then
+        npm install -g pnpm
+    elif command -v corepack &>/dev/null; then
+        corepack enable
+        corepack prepare pnpm@latest --activate
+    else
+        echo "✗ Neither pnpm, npm, nor corepack found. Please install Node.js first."
+        echo "  See: https://nodejs.org/"
+        exit 1
+    fi
+    # Verify installation
+    if ! command -v pnpm &>/dev/null; then
+        echo "✗ Failed to install pnpm. Please install it manually: npm install -g pnpm"
+        exit 1
+    fi
+    echo "✓ pnpm installed successfully"
+fi
+
 # ── Load .env ────────────────────────────────────────────────────────────────
 
 if [ -f "$REPO_ROOT/.env" ]; then
@@ -312,7 +335,7 @@ echo ""
 echo "  Services:"
 echo "    Gateway     → localhost:8001  (REST API + agent runtime)"
 echo "    Frontend    → localhost:3000  (Next.js)"
-echo "    Nginx       → localhost:2026  (reverse proxy)"
+echo "    Nginx       → localhost:2036  (reverse proxy)"
 echo ""
 
 # ── Cleanup handler ──────────────────────────────────────────────────────────
@@ -376,7 +399,7 @@ run_service "Frontend" \
 # 3. Nginx
 run_service "Nginx" \
     "nginx -g 'daemon off;' -c '$REPO_ROOT/docker/nginx/nginx.local.conf' -p '$REPO_ROOT' > logs/nginx.log 2>&1" \
-    2026 10
+    2036 10
 
 # ── Ready ────────────────────────────────────────────────────────────────────
 
@@ -385,7 +408,7 @@ echo "=========================================="
 echo "  ✓ DeerFlow is running!  [$MODE_LABEL]"
 echo "=========================================="
 echo ""
-echo "  🌐 http://localhost:2026"
+echo "  🌐 http://localhost:2036"
 echo ""
 echo "  Routing: Frontend → Nginx → Gateway"
 echo "  API:     /api/langgraph/*  →  Gateway agent runtime"

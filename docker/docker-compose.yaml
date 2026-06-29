@@ -2,7 +2,7 @@
 # Usage: make up
 #
 # Services:
-#   - nginx:       Reverse proxy (port 2026, configurable via PORT env var)
+#   - nginx:       Reverse proxy (port 2036, configurable via PORT env var)
 #   - frontend:    Next.js production server
 #   - gateway:     FastAPI Gateway API + agent runtime
 #   - provisioner: (optional) Sandbox provisioner for Kubernetes mode
@@ -21,7 +21,7 @@
 # LangSmith tracing is disabled by default (LANGSMITH_TRACING=false).
 # Set LANGSMITH_TRACING=true and LANGSMITH_API_KEY in .env to enable it.
 #
-# Access: http://localhost:${PORT:-2026}
+# Access: http://localhost:${PORT:-2036}
 
 services:
   # ── Reverse Proxy ──────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ services:
     image: nginx:alpine
     container_name: deer-flow-nginx
     ports:
-      - "${PORT:-2026}:2026"
+      - "${PORT:-2036}:2026"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf.template:ro
     command: >

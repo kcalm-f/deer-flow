@@ -50,6 +50,23 @@ import { cn } from "@/lib/utils";
 import { CopyButton } from "../copy-button";
 
 import { MarkdownContent } from "./markdown-content";
+import { Nl2sqlLineageGraph, type Nl2sqlLineage } from "./nl2sql-lineage-graph";
+
+function extractNl2sqlLineage(message: Message): Nl2sqlLineage | null {
+  const metadata = message.additional_kwargs?.nl2sql_evidence_gate;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+  const lineage = (metadata as Record<string, unknown>).nl2sql_lineage;
+  if (!lineage || typeof lineage !== "object" || Array.isArray(lineage)) {
+    return null;
+  }
+  const candidate = lineage as Partial<Nl2sqlLineage>;
+  if (!Array.isArray(candidate.nodes) || !Array.isArray(candidate.edges)) {
+    return null;
+  }
+  return candidate as Nl2sqlLineage;
+}
 
 function FeedbackButtons({
   threadId,
@@ -246,6 +263,7 @@ function MessageContent_({
 
   const rawContent = extractContentFromMessage(message);
   const reasoningContent = extractReasoningContentFromMessage(message);
+  const nl2sqlLineage = !isHuman ? extractNl2sqlLineage(message) : null;
 
   const files = useMemo(() => {
     const files = message.additional_kwargs?.files;
@@ -332,6 +350,7 @@ function MessageContent_({
         className="my-3"
         components={components}
       />
+      <Nl2sqlLineageGraph lineage={nl2sqlLineage} />
     </AIElementMessageContent>
   );
 }
